@@ -1,0 +1,12 @@
+[project]
+name = "holoassist-nf"
+version = "0.1.0"
+description = "Sequential Normalizing-Flow timing surprise on HoloAssist (procedural mistake / intervention anticipation)"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.2", "zuko>=1.4", "pandas>=2.0", "pyarrow>=14",
+    "numpy>=1.26", "matplotlib>=3.8",
+]
+
+[tool.uv]
+package = false

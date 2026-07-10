@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HoloAssist-NF · 手順のタイミングを逐次NFで</title>
+<style>
+ body{font:16px/1.75 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem;color:#222}
+ h1{line-height:1.35;margin-bottom:.2rem} .sub{color:#666}
+ .kpis{display:flex;gap:1rem;flex-wrap:wrap;margin:1.4rem 0}
+ .kpi{background:#f5f3f0;border-radius:12px;padding:1rem 1.3rem;min-width:150px} .kpi b{display:block;font-size:1.6rem;color:#c2410c}
+ section{margin:2.3rem 0} img{width:100%;border:1px solid #e5e5e5;border-radius:10px}
+ .howto{color:#444;background:#faf8f5;border-left:3px solid #d97757;padding:.6rem .9rem;border-radius:0 8px 8px 0}
+ code{background:#f0eee9;padding:.1rem .3rem;border-radius:4px} .lead{background:#f7f5f2;border-radius:12px;padding:1rem 1.2rem}
+</style></head><body>
+<h1>HoloAssist-NF — 手順の「タイミング」を逐次 Normalizing Flow で</h1>
+<p class="sub">実験C · <code>SURPRISE = −log p(タイミング | 履歴, 行動)</code> でミス／介入を先読みできるか。</p>
+<div class="kpis">
+ <div class="kpi"><b>1.672</b>Flow held-out NLL</div>
+ <div class="kpi"><b>1.704</b>MDN baseline NLL</div>
+ <div class="kpi"><b>0.5735</b>介入検出 AUROC</div>
+</div>
+<p class="lead"><b>何をしたか</b>：HoloAssistのオープン注釈（動画不要）から各ステップの所要時間・間を取り出し、
+履歴で条件づけた逐次NSFで<b>手順ペースの密度</b>を学習。<b>密度の当てはまりはFlowがMDNに勝つ</b>（NLLが低い）一方、
+<b>タイミング単独ではミス検出はほぼ偶然・介入は弱い信号</b>という正直な結果。実験Aで欠けていた
+<b>逐次サプライズと生成（期待タイミングfan）</b>を使えている。</p>
+<section><h2>リプレイ：手順の進行に沿ってタイミング・サプライズが動く＋Flowが期待タイミングを生成</h2><img src="results/figures/replay.gif" alt="replay.gif"><p class="howto">**左**＝手順ステップ順に並べた **サプライズ = −log p(タイミング)** の推移。赤い縦線＝指導者の介入。**右**＝各ステップでFlowが**サンプリングで生成した「期待される所要時間・間の分布(fan)」**（灰）と、実際の値（オレンジ／ミスは濃橙／介入は赤）。**見どころ**：Aで眠らせていた*逐次の厳密尤度*と*生成*を使えている。実測が灰の雲から外れる＝pace異常。</p></section>
+<section><h2>1クリップのサプライズ時系列（赤＝介入）</h2><img src="results/figures/timeline.png" alt="timeline.png"><p class="howto">手順が進むにつれサプライズがどう動くか。介入(赤線)の周辺でやや持ち上がる傾向はあるが、単発のスパイクで介入を当てられるほど強くはない（下のAUC参照）。</p></section>
+<section><h2>タイミング・サプライズは何を検出できるか（Flow / MDN / 所要時間のみ）</h2><img src="results/figures/auc.png" alt="auc.png"><p class="howto">3課題×3手法のAUROC（0.5=偶然）。**見どころ**：①ミス検出はほぼ偶然(≈0.51)＝「間違い」はタイミングでなく*意味*の異常。②介入の検出/予兆は弱いが偶然超え(≈0.57)。③FlowとMDNはAUCではほぼ互角＝**下流の天井はモデルでなく信号（タイミング）側**にある。</p></section>
+<section><h2>密度としての当てはまり：Flow vs MDN（held-out NLL）</h2><img src="results/figures/training_curve.png" alt="training_curve.png"><p class="howto">**ここがNFの本質的な勝ち**：held-out NLLで **Flow < MDN**（低いほど良い）。手順タイミングの分布は非ガウス・多峰で、Neural Spline Flowの表現力が効く＝実験Aで『ガウスに並ばれた』反省を、密度の指標では克服できている。</p></section>
+<p class="sub"><code>python -m holo.report</code> で自動生成。NF forget/mistakeシリーズ(A–E)のC。</p>
+</body></html>
