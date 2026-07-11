@@ -33,6 +33,24 @@ NUM_GUIDE = [
     ("NLL（held-out）", "手順ペースの分布をどれだけ当てたか。<b>低いほど良い</b>。"),
 ]
 
+RAW_INTRO = (
+    "<b>生データ</b>＝HoloAssist の<b>注釈JSON</b>（動画不使用・ログイン不要）。各<b>クリップ</b>＝手順の"
+    "<b>行動区間の系列</b> <code>[開始秒, 終了秒, ラベル5次元]</code>、加えて <b>ミス(Correct/Wrong)</b> と "
+    "<b>指導者の介入</b> の注釈型。<br>"
+    "<b>1レコードの実例</b>：クリップ <code>R0027-12</code> の手順3番目 ＝ <code>12.22–16.10秒</code>（所要3.9秒）、"
+    "動作コード1・対象コード1、ミス=0、介入=0。<br>"
+    "→ 学習に使ったのは <b>各ステップの所要時間・直前ステップとの間</b>（log化）＋動作/対象コード＋ミス/介入。"
+    "計 142,664 ステップ。<b>手ポーズ・視線・物体などの生ストリームは含まない</b>（注釈のみ）。")
+
+FUTURE = (
+    "<p>本実装は「<b>行動区間＋タイミング</b>」だけ。タイミング単独では『間違いの意味』は取れない。"
+    "データの列がこう増えると、こんな学習に広がる：</p><ul>"
+    "<li><b>＋手ポーズ・視線・物体（生ストリーム）</b> → 『やり方の異常＝意味的ミス』に近づく"
+    "（本実装のミス検出 0.51＝ほぼ勘、の処方箋）。</li>"
+    "<li><b>＋正解手順（レシピDAG／工程の依存関係）</b> → 順序違反・工程飛ばしを直接検出。</li>"
+    "<li><b>＋ユーザID・熟達度ラベル</b> → 個人化と<b>スキル評価</b>（熟練ほど低サプライズ）。</li>"
+    "<li><b>＋介入の種類ラベル</b> → 『有無』でなく『どの助けが要るか』まで予測。</li></ul>")
+
 
 def _figures(m):
     tr = m.get("train", {})
@@ -98,6 +116,9 @@ def _readme(m):
              "実験Aで眠らせていた **逐次の厳密尤度・生成・予兆** を起こすのが狙い。"
              "NF forget/mistake シリーズ(A–E)の C。図・数値は `python -m holo.report` で自動生成。\n")
 
+    L.append("## 元データの中身（何が入っているか）\n")
+    L.append(RAW_INTRO + "\n")
+
     L.append("## どんなデータか\n")
     L.append("- **HoloAssist**（作業者＋指導者の協働タスク）の**オープン注釈のみ**を使用（動画不要・ログイン不要）。")
     L.append("- 各クリップ＝行動区間の系列 `[開始, 終了, ラベル]`。ここから **所要時間・直前ステップとの間**を計算。")
@@ -139,6 +160,8 @@ def _readme(m):
              "python -m holo.evaluate   # ミス/介入/予兆のAUC\n"
              "python -m holo.replay     # サプライズ時系列 + 期待タイミングfan（GIF/MP4）\n"
              "python -m holo.report     # 図 + この日本語README + index.html\n```\n")
+    L.append("## 考察：どんなフォーマットのデータがあれば何ができるか\n")
+    L.append(FUTURE + "\n")
     L.append("_条件付きNFで手順の尤度を forget/mistake ポテンシャルとして測るシリーズ(A–E)の C。"
              "A=物の置き場（空間）、C=手順のタイミング（時間）。次はB(HD-EPIC: 3D配置×視線)。_")
     C.BASE.joinpath("README.md").write_text("\n".join(L))
@@ -183,8 +206,10 @@ def _index_html(m):
 履歴で条件づけた逐次NSFで<b>手順ペースの密度</b>を学習。<b>密度の当てはまりはFlowがMDNに勝つ</b>（NLLが低い）一方、
 <b>タイミング単独ではミス検出はほぼ偶然・介入は弱い信号</b>という正直な結果。実験Aで欠けていた
 <b>逐次サプライズと生成（期待タイミングfan）</b>を使えている。</p>
+<section><h2>元データの中身（何が入っているか）</h2><p class="lead">{RAW_INTRO}</p></section>
 {data_html}
 {blocks}
+<section><h2>考察：どんなフォーマットのデータがあれば何ができるか</h2>{FUTURE}</section>
 <p class="sub"><code>python -m holo.report</code> で自動生成。NF forget/mistakeシリーズ(A–E)のC。</p>
 </body></html>"""
     C.BASE.joinpath("index.html").write_text(html)
