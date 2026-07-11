@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import numpy as np
 import matplotlib
@@ -9,6 +10,28 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from . import config as C
+
+
+def _md(s: str) -> str:
+    """Render inline markdown (**bold**, *italic*) as HTML so index.html isn't literal."""
+    s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
+    s = re.sub(r"\*(.+?)\*", r"<i>\1</i>", s)
+    return s
+
+
+DATA_ROWS = [
+    ("データ", "<b>HoloAssist</b>（作業者＋指導者の協働タスク）の<b>公開注釈のみ</b>（動画・ログイン不要）。"
+               "各クリップ＝行動区間 <code>[開始, 終了, ラベル]</code> の系列。"),
+    ("使う量", "各ステップの <b>所要時間</b>・<b>直前ステップとの間</b>、<b>ミス(Correct/Wrong)</b>、<b>指導者の介入</b>。"),
+    ("予測対象 x", "<b>(log所要時間, log間)</b>"),
+    ("条件 c", "<b>GRU(過去ステップの行動＋タイミング) ＋ 現ステップの行動</b>（＝これまでの手順の流れ）"),
+    ("モデル", "<b>逐次</b>条件付き <b>Neural Spline Flow</b>。比較ベース＝MDN（ガウス混合）。"),
+    ("スコア", "<b>SURPRISE = −log p(タイミング｜履歴, 行動)</b>＝「今の手順の間合いが、流れから見てどれだけ意外か」"),
+]
+NUM_GUIDE = [
+    ("AUROC", "ミス/介入とそうでない所を見分ける力。<b>0.5＝勘・1.0＝完璧</b>。"),
+    ("NLL（held-out）", "手順ペースの分布をどれだけ当てたか。<b>低いほど良い</b>。"),
+]
 
 
 def _figures(m):
@@ -125,8 +148,12 @@ def _index_html(m):
     tr, ev = m.get("train", {}), m.get("evaluate", {})
     fn = tr.get("flow", {}).get("best_val_nll"); mn = tr.get("mdn_baseline", {}).get("best_val_nll")
     blocks = "\n".join(
-        f'<section><h2>{t}</h2><img src="results/figures/{f}" alt="{f}"><p class="howto">{h}</p></section>'
+        f'<section><h2>{t}</h2><img src="results/figures/{f}" alt="{f}"><p class="howto">{_md(h)}</p></section>'
         for f, t, h in FIGURES if (C.FIGS / f).exists())
+    drows = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in DATA_ROWS)
+    guide = "".join(f"<li><b>{k}</b>：{v}</li>" for k, v in NUM_GUIDE)
+    data_html = (f'<section><h2>データ / 学習（このページの前提）</h2><table class="d">{drows}</table>'
+                 f'<p class="sub" style="margin:.7rem 0 .2rem"><b>数字の読み方</b></p><ul>{guide}</ul></section>')
     nll = f"{fn:.3f}" if fn is not None else "—"
     nllm = f"{mn:.3f}" if mn is not None else "—"
     html = f"""<!doctype html>
@@ -141,6 +168,9 @@ def _index_html(m):
  section{{margin:2.3rem 0}} img{{width:100%;border:1px solid #e5e5e5;border-radius:10px}}
  .howto{{color:#444;background:#faf8f5;border-left:3px solid #d97757;padding:.6rem .9rem;border-radius:0 8px 8px 0}}
  code{{background:#f0eee9;padding:.1rem .3rem;border-radius:4px}} .lead{{background:#f7f5f2;border-radius:12px;padding:1rem 1.2rem}}
+ table.d{{border-collapse:collapse;width:100%}} table.d td{{border:1px solid #e5e5e5;padding:.4rem .6rem;vertical-align:top}}
+ table.d tr td:first-child{{white-space:nowrap;font-weight:600;background:#faf8f5;width:9rem}}
+ ul{{margin:.3rem 0}}
 </style></head><body>
 <h1>HoloAssist-NF — 手順の「タイミング」を逐次 Normalizing Flow で</h1>
 <p class="sub">実験C · <code>SURPRISE = −log p(タイミング | 履歴, 行動)</code> でミス／介入を先読みできるか。</p>
@@ -153,6 +183,7 @@ def _index_html(m):
 履歴で条件づけた逐次NSFで<b>手順ペースの密度</b>を学習。<b>密度の当てはまりはFlowがMDNに勝つ</b>（NLLが低い）一方、
 <b>タイミング単独ではミス検出はほぼ偶然・介入は弱い信号</b>という正直な結果。実験Aで欠けていた
 <b>逐次サプライズと生成（期待タイミングfan）</b>を使えている。</p>
+{data_html}
 {blocks}
 <p class="sub"><code>python -m holo.report</code> で自動生成。NF forget/mistakeシリーズ(A–E)のC。</p>
 </body></html>"""
